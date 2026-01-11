@@ -1,66 +1,99 @@
-import { useState, useEffect } from 'react'
-import "prismjs/themes/prism-tomorrow.css"
+import { useState, useEffect } from "react"
 import Editor from "react-simple-code-editor"
-import prism from "prismjs"
+import hljs from "highlight.js"
+import "highlight.js/styles/github-dark.css"
+
 import Markdown from "react-markdown"
-import rehypeHighlight from "rehype-highlight";
-import "highlight.js/styles/github-dark.css";
-import axios from 'axios'
-import './App.css'
+import rehypeHighlight from "rehype-highlight"
+import axios from "axios"
+import "./App.css"
 
-function App() {
-  const [ count, setCount ] = useState(0)
-  const [ code, setCode ] = useState(` function sum() {
-  return 1 + 1
-}`)
+/* Language templates */
+const templates = {
+  javascript: `function sum(a, b) {
+  return a + b;
+}`,
 
-  const [ review, setReview ] = useState(``)
+  python: `def sum(a, b):
+    return a + b`,
 
+  java: `public class Main {
+  public static int sum(int a, int b) {
+    return a + b;
+  }
+}`,
+
+  cpp: `int sum(int a, int b) {
+  return a + b;
+}`,
+
+  go: `func sum(a int, b int) int {
+  return a + b
+}`
+}
+
+export default function App() {
+  const [language, setLanguage] = useState("cpp")
+  const [code, setCode] = useState(templates.cpp)
+  const [review, setReview] = useState("")
+
+  // Auto update code when language changes
   useEffect(() => {
-    prism.highlightAll()
-  }, [])
+    setCode(templates[language])
+  }, [language])
+
+  const highlight = (code) => {
+    try {
+      return hljs.highlight(code, { language }).value
+    } catch {
+      return code
+    }
+  }
 
   async function reviewCode() {
-    const response = await axios.post('http://localhost:3000/ai/get-review', { code })
-    setReview(response.data)
+    const res = await axios.post("http://localhost:3000/ai/get-review", {
+      code,
+      language
+    })
+    setReview(res.data)
   }
 
   return (
-    <>
-      <main>
-        <div className="left">
-          <div className="code">
-            <Editor
-              value={code}
-              onValueChange={code => setCode(code)}
-              highlight={code => prism.highlight(code, prism.languages.javascript, "javascript")}
-              padding={10}
-              style={{
-                fontFamily: '"Fira code", "Fira Mono", monospace',
-                fontSize: 16,
-                border: "1px solid #ddd",
-                borderRadius: "5px",
-                height: "100%",
-                width: "100%"
-              }}
-            />
-          </div>
-          <div
-            onClick={reviewCode}
-            className="review">Review</div>
-        </div>
-        <div className="right">
-          <Markdown
+    <main>
+      <div className="left">
+        <select
+          className="lang-select"
+          value={language}
+          onChange={(e) => setLanguage(e.target.value)}
+        >
+          <option value="javascript">JavaScript</option>
+          <option value="python">Python</option>
+          <option value="java">Java</option>
+          <option value="cpp">C++</option>
+          <option value="go">Go</option>
+        </select>
 
-            rehypePlugins={[ rehypeHighlight ]}
-
-          >{review}</Markdown>
+        <div className="code-editor">
+          <Editor
+            value={code}
+            onValueChange={setCode}
+            highlight={highlight}
+            padding={16}
+            textareaClassName="editor-textarea"
+            preClassName="editor-pre"
+          />
         </div>
-      </main>
-    </>
+
+        <button className="review" onClick={reviewCode}>
+          Review
+        </button>
+      </div>
+
+      <div className="right">
+        <Markdown rehypePlugins={[rehypeHighlight]}>
+          {review}
+        </Markdown>
+      </div>
+    </main>
   )
 }
-
-
-
-export default App
